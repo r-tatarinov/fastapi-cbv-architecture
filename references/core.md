@@ -17,19 +17,21 @@ app/
 │       ├── base.py
 │       └── models.py
 │
-├── models/
-│   ├── __init__.py
-│   ├── <entity>.py
-│   └── mixins/
-│       ├── __init__.py
-│       └── <entity>.py
-│
 ├── database/
 │   └── session.py
 │
-└── integrations/
-    └── <system>/
-        └── client.py
+├── integrations/
+│   └── <system>/
+│       └── client.py
+│
+├── models/
+│   ├── __init__.py
+│   └── <entity>.py
+│
+└── model_mixins/
+    ├── __init__.py
+    └── <entity>/
+        └── ...
 ```
 
 > Create only the layers that have a current responsibility.
@@ -60,14 +62,15 @@ This is a responsibility model, not a requirement that every endpoint traverse e
 possible layer. A use case stops where its current responsibilities stop.
 
 `routes/<feature>/models.py` contains Pydantic API contracts;
-`models/<entity>.py` contains ORM persistence mapping.
+`models/<entity>.py` contains ORM persistence mapping; and
+`model_mixins/<entity>/` contains that entity's response/data mixins.
 
 | Question | Owner |
 |---|---|
 | Where is HTTP wiring? | Feature `router.py` |
 | Where is feature behavior? | Feature `base.py` |
 | Where is persistence mapping? | `models/<entity>.py`, one mapped model per file |
-| Where is one entity represented? | Its response/data mixin |
+| Where is one entity represented? | Its response/data mixin under `model_mixins/<entity>/` |
 | Where is a composite response built? | Feature `base.py` |
 | Where are public API contracts? | Feature Pydantic `models.py` |
 | Who completes an HTTP transaction? | The feature-base mutation |
@@ -196,14 +199,18 @@ only to complete a template.
 
 ## ORM and response boundary
 
-Store one mapped ORM model per file. For an API-facing ORM entity, keep persistence and
-representation in separate files:
+Store one mapped ORM model per file. For an API-facing ORM entity, keep persistence
+mapping and representation code in separate package trees:
 
 ```text
 models/
-├── product.py
-└── mixins/
-    └── product.py
+├── __init__.py
+└── product.py
+
+model_mixins/
+├── __init__.py
+└── product/
+    └── ...
 ```
 
 ```text
@@ -220,8 +227,9 @@ Pydantic model  -> public API contract
 
 API serialization must not live directly in the mapped ORM model body. An internal or
 link model that is not exposed through the API does not require a response mixin. Add
-that boundary only when the entity becomes API-facing. Export externally consumed
-models and mixins explicitly through their package `__init__.py`.
+that boundary only when the entity becomes API-facing. Keep entity mixins in the
+dedicated `model_mixins/<entity>/` package, separate from ORM mappings. Export
+externally consumed models and mixins explicitly through their package `__init__.py`.
 
 ## Response construction
 

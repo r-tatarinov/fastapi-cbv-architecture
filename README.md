@@ -50,7 +50,19 @@ routes/<feature>/
 ```
 
 Here, feature `models.py` contains Pydantic API contracts. ORM mappings live separately
-under the application's ORM models package.
+under the application's ORM models package. Entity response/data mixins live in a
+sibling `model_mixins` package:
+
+```text
+models/
+├── __init__.py
+└── <entity>.py
+
+model_mixins/
+├── __init__.py
+└── <entity>/
+    └── ...
+```
 
 ## Core principles
 
