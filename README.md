@@ -46,12 +46,14 @@ routes/<feature>/
 ├── __init__.py
 ├── router.py
 ├── base.py
-└── models.py
+├── models.py
+└── response_models.py
 ```
 
-Here, feature `models.py` contains Pydantic API contracts. ORM mappings live separately
-under the application's ORM models package. Entity response/data mixins live in a
-sibling `model_mixins` package:
+Here, feature `models.py` contains Pydantic request and parameter contracts, while
+`response_models.py` contains Pydantic response contracts. ORM mappings live
+separately under the application's ORM models package. Entity response/data mixins
+live in a sibling `model_mixins` package:
 
 ```text
 models/

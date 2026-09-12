@@ -15,7 +15,8 @@ app/
 │       ├── __init__.py
 │       ├── router.py
 │       ├── base.py
-│       └── models.py
+│       ├── models.py
+│       └── response_models.py
 │
 ├── database/
 │   └── session.py
@@ -61,7 +62,8 @@ HTTP response
 This is a responsibility model, not a requirement that every endpoint traverse every
 possible layer. A use case stops where its current responsibilities stop.
 
-`routes/<feature>/models.py` contains Pydantic API contracts;
+`routes/<feature>/models.py` contains Pydantic request and parameter contracts;
+`routes/<feature>/response_models.py` contains Pydantic response contracts;
 `models/<entity>.py` contains ORM persistence mapping; and
 `model_mixins/<entity>/` contains that entity's response/data mixins.
 
@@ -72,7 +74,8 @@ possible layer. A use case stops where its current responsibilities stop.
 | Where is persistence mapping? | `models/<entity>.py`, one mapped model per file |
 | Where is one entity represented? | Its response/data mixin under `model_mixins/<entity>/` |
 | Where is a composite response built? | Feature `base.py` |
-| Where are public API contracts? | Feature Pydantic `models.py` |
+| Where are public request and parameter contracts? | Feature Pydantic `models.py` |
+| Where are public response contracts? | Feature Pydantic `response_models.py` |
 | Who completes an HTTP transaction? | The feature-base mutation |
 | What determines eager loaders? | Relations read by the selected builder or projection |
 | When is a new layer created? | Only when it has a current distinct responsibility |
@@ -89,19 +92,17 @@ routes/<feature>/
 ├── __init__.py
 ├── router.py
 ├── base.py
-└── models.py
+├── models.py
+└── response_models.py
 ```
 
 - `router.py` owns the HTTP boundary: decorators, parameters, dependency injection,
   authentication wiring, session injection, response metadata, and delegation.
 - `base.py` owns queries, mutations, business validation, result construction, and
   reusable feature behavior.
-- `models.py` owns Pydantic request, parameter, and response contracts.
+- `models.py` owns Pydantic request and parameter contracts.
+- `response_models.py` owns Pydantic response contracts.
 - `__init__.py` owns explicit public exports used to register or consume the feature.
-
-`response_models.py` is not part of the baseline. Add it only when the project uses
-separate OpenAPI response metadata or examples that cannot reasonably remain in
-`models.py`.
 
 ## CBV boundary
 
@@ -188,7 +189,8 @@ owns that responsibility.
 HTTP feature
 ├── router          required for the HTTP boundary
 ├── base            required for HTTP feature behavior
-├── Pydantic models when API contracts exist
+├── request/parameter models when input contracts exist
+├── response models  when output contracts exist
 ├── ORM model       only when persistent mapped state exists
 ├── response mixin  only for API-facing ORM entities
 └── eager loaders   only when a response reads relations
