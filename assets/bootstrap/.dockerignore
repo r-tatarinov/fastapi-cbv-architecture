@@ -1,0 +1,11 @@
+.venv
+.vscode
+.idea/
+.htpasswd
+__pycache__/
+app.db-journal
+
+*.db
+*.pyc
+*.log
+src/.env

@@ -1,0 +1,16 @@
+venv/
+.venv
+.vscode
+.idea/
+.codex
+.htpasswd
+__pycache__/
+app.db-journal
+
+*.db
+*.pyc
+*.log
+*.pem
+*.pid
+
+src/.env

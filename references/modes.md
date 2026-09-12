@@ -1,79 +1,51 @@
 # Operating Modes
 
-Select one mode and apply the invariants from [core.md](core.md). When the work touches
-shared responses, errors, query parameters, or list behavior, also apply
-[routing-infrastructure.md](routing-infrastructure.md).
+Select one mode and apply [core.md](core.md). Read
+[routing-infrastructure.md](routing-infrastructure.md) when shared routing behavior is
+in scope.
 
 ## Bootstrap
 
-Use for a new or minimal project.
+Use Bootstrap only for a new or intentionally empty project.
 
-1. Read [bootstrap.md](bootstrap.md) in full, together with the shared routing rules.
-2. Inspect the target layout and preserve explicit user choices or existing setup.
-3. Implement the starter's application setup, configuration, ORM/session boundary,
-   task lifecycle, shared routing contracts, JSON responses/downloads, and docs auth.
-4. Implement and register the `records` example with its model, entity mixin,
-   feature base, thin CBV router, schemas, and migration.
-5. Supply environment examples, dependencies, Docker/PostgreSQL startup, migrations,
-   and concise commands for running the project and adding its next feature.
-6. Run the acceptance checks in `bootstrap.md`; report any environment-limited checks.
+1. Inspect the target and confirm that scaffold paths do not already exist.
+2. Read [bootstrap.md](bootstrap.md).
+3. Run `scripts/bootstrap_project.py`; do not recreate its files manually.
+4. Do not install host dependencies or create an environment.
+5. Run static validation. Use the generated Docker workflow for runtime checks only
+   when requested and available.
 
-### What counts as complete
-
-The shared implementations are part of the starter contract, not optional future
-work. A tree of `__init__.py` files or an importable FastAPI object alone is incomplete.
-The generated project must let the developer start the application and add a feature
-using the existing response, query, ORM, and setup abstractions.
-
-The standard API surface consists of the small example and protected documentation.
-Do not add other demo domains, health endpoints, identity providers, or integrations
-unless requested or required by the target deployment. The `records` example may be
-replaced by a user-requested first feature that demonstrates the same boundaries.
-An explicit request to omit examples overrides the default but does not remove the
-working shared infrastructure.
-
-Keep the skill instruction-based. Do not require access to external reference
-projects, templates, or repositories in order to apply this skill. Do not introduce
-a bundled project template or generator merely to implement these instructions.
+Bootstrap is complete when the fixed inventory is present and validates. It does not
+need an endpoint, mapped entity, migration, database container, or test suite.
 
 ## Extend
 
-Use to expand an existing project.
+Use Extend for an existing application or for the first real feature after Bootstrap.
 
-1. Decide whether the capability belongs to an existing feature or creates a new
-   cohesive feature boundary.
-2. Inspect the feature and its current `routes/base`, response, error, and query
-   infrastructure before adding local helpers.
-3. Reuse compatible shared capabilities; keep feature-specific query and business
-   behavior in the feature base.
-4. Preserve compatible public envelopes, metadata semantics, and project conventions.
-5. Apply the invariants from `core.md` to new code.
-6. Do not refactor unrelated legacy code.
-7. If the existing architecture differs but works, do not replace it silently.
+1. Inspect the target's files and project instructions before choosing a pattern.
+2. Preserve established paths, imports, public signatures, response shapes, session
+   creation, and inheritance order when they are compatible with the request.
+3. Put endpoint decorators and HTTP/session wiring in the feature router and reusable
+   feature behavior in its base.
+4. Add an ORM model and response mixin only for a real entity. Use one mapped model
+   per file and one flat response-mixin module per API-facing model.
+5. Add shared behavior only when it has a current cross-feature responsibility.
+6. Do not refactor unrelated legacy code or replace existing infrastructure silently.
 
-The Bootstrap inventory is not a retrofit checklist. Do not add its example,
-documentation authentication, Docker setup, or other unrelated infrastructure to an
-existing project as part of Extend.
+The Bootstrap inventory is never a retrofit checklist.
 
 ## Audit
 
-Audit is read-only. Review:
+Audit is read-only. Check:
 
-- feature boundaries;
-- CBV inheritance;
-- router thickness;
-- separation of `model_mixins/` from `routes/base/mixins/`;
-- shared success and error response normalization;
-- collection count, pagination, empty-page, search, filter, and ordering behavior;
-- alignment between projections, response envelopes, and Pydantic contracts;
-- ORM/response separation;
-- eager loading;
+- feature-local CBV inheritance and router/base ownership;
+- physical placement of ORM models and flat entity-response mixins;
+- `ManagerSQLAlchemy` fidelity and session use;
+- shared response and collection-query contracts;
+- eager-loading completeness and serializer-triggered SQL;
 - transaction ownership;
-- authentication and authorization boundaries;
-- integration boundaries;
-- explicit exports;
-- Python class method order.
+- class method grouping: instance methods, then class methods, then static methods;
+- extra modules or abstractions that are not present in the active project pattern.
 
-Classify findings with the categories in `core.md`. For each problem, provide concrete
-evidence, its impact, and the smallest reasonable correction. Separate correctness
-risks from consistency-only differences.
+For each finding, give evidence, impact, and the smallest correction. Distinguish a
+working legacy exception from a newly introduced divergence.

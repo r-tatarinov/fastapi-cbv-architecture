@@ -1,222 +1,79 @@
 # Shared Routing Infrastructure
 
-Read this document when work touches `routes/base`, route-base mixins, response
-envelopes, error responses, common query parameters, or collection endpoints. Apply
-the ownership rules from [core.md](core.md) first.
+Read this document when work touches shared responses, query parameters, filtering,
+pagination, or the route-base classes.
 
-## Responsibility map
+## Physical ownership
 
 ```text
-routes/base/
-    shared routing contracts and orchestration
+routes/general_models.py
+    shared HTTP parameter and response-schema classes
 
-routes/base/mixins/
-    small reusable HTTP/API behaviors
+routes/utils.py
+    response decorators and module utilities
+
+routes/mixins.py
+    MainRouterMIXIN and other established shared router mixins
+
+routes/base/abstract_routes.py
+    AbstractBaseRouter hooks
+
+routes/base/general_routes.py
+    GeneralBaseRouter collection flow
 
 routes/<feature>/base.py
-    feature query, mutation, authorization that needs feature state,
-    business validation, projection selection, transaction completion
-
-routes/<feature>/router.py
-    decorators, HTTP parameters, dependency/session wiring, response metadata,
-    delegation
-
-routes/<feature>/models.py
-    Pydantic request, query, and response contracts
+    feature queries, projections, validation, and mutations
 ```
 
-Shared routing code is an infrastructure boundary, not a generic home for code used
-by more than one class. Promote behavior into it only when the behavior has the same
-HTTP/API semantics across features and a stable extension point.
+Do not relocate these symbols merely to produce a cleaner-looking hierarchy.
 
-Prefer capability composition over a catch-all base:
+## Shared response contract
 
-```text
-response envelope capability ─┐
-error response capability ────┼─> FeatureBase -> FeatureRouter
-collection query capability ──┘
+`MainRouterMIXIN.get_data` keeps the established signature:
+
+```python
+get_data(data, status_code=200, meta=None, fmt="json", is_download=False)
 ```
 
-A feature should inherit or delegate to only the capabilities it uses. Exact class and
-method names follow the target project in Extend. Bootstrap uses the concrete
-`MainRouterMIXIN`, `AbstractBaseRouter`, and `GeneralBaseRouter` contracts specified
-in [bootstrap.md](bootstrap.md); response-only features need no collection base.
+It is a static method decorated by `make_data_by_response`. The decorator owns the
+`{data, success, meta?}` envelope and JSON/YAML/XML download behavior. Preserve the
+status code and the established metadata fields. Do not replace this contract with a
+new response-builder function or split its methods among new modules during ordinary
+feature work.
 
-## Successful responses
+`GeneralParams` keeps `start`, `limit`, `order_by`, `response_fmt`, `is_download`,
+`search`, `filter_by`, and `lang`. Extend may preserve a target project's narrower
+variant, but Bootstrap must use the bundled contract without redesigning it.
 
-Use one shared response boundary to turn feature results into the project's public
-HTTP envelope. In the architecture this commonly means:
+## Collection flow
 
-```text
-feature result
-    + status code
-    + optional metadata
-    + optional established delivery options
-                ↓
-shared response builder
-                ↓
-{data: ..., success: true, meta?: ...}
-```
+`GeneralBaseRouter` keeps these recognizable entry points and their existing calling
+shape:
 
-The response capability owns:
+- `get_response_by_select_rel(session, params, select_rel, **kwargs)`;
+- `get_instances_by_response(session, params, select_rel)`;
+- `get_count_by_select_rel(session, select_rel, **kwargs)`;
+- `apply_filter_by(filter_by, model_class, select_rel, allowed_keys=None)`;
+- `parse_filter_by(filter_string, allowed_keys=None)`.
 
-- the stable envelope and the success flag;
-- derivation of success/failure from the HTTP status class so callers cannot emit a
-  status and a contradictory flag;
-- propagation of the intended HTTP status;
-- inclusion and normalization of shared metadata;
-- headers and serialization format when the project has an established cross-feature
-  delivery contract;
-- the empty-list response shape for collection endpoints.
+The shared base may inspect a requested filter field dynamically, but it must not name
+or access a concrete model field directly. The feature base supplies its root
+statement, ordering map, search expressions over known fields, specialized filtering,
+loaders, and projection hooks. Shared code must not gain feature-specific models,
+fields, or business rules. Preserve `meta.total` as the returned-page size and
+`meta.counts` as the count produced by the established count flow.
 
-The response capability does not own ORM queries, feature business rules, entity
-serialization, or the choice between an entity projection and a composite projection.
-Keep one normalization path instead of constructing slightly different envelopes in
-routers and feature bases.
+`AbstractBaseRouter` declares only the hooks every collection feature is expected to
+provide: collection orchestration, ordering, entity projection, and response
+construction. Optional projections and relation-specific variants belong to the
+feature that uses them rather than to the shared abstract base.
 
-Bootstrap implements JSON responses and JSON downloads through the same envelope
-builder. It has no YAML/XML support or `response_fmt` parameter. In Extend, preserve
-other transport capabilities when they belong to the target API's existing contract.
+## Errors and extensions
 
-## Error responses
+Reuse the generic `MainRouterMIXIN` helpers when their public response matches the
+feature. Field-, relation-, hierarchy-, and localization-specific errors belong in the
+feature base. Do not add a parallel envelope system or generic exception catcher.
 
-Expected feature failures use the same response boundary as successful results:
-
-```text
-feature/base detects expected failure
-                ↓
-error payload + semantic HTTP status
-                ↓
-shared response builder
-                ↓
-{data: {error: ...}, success: false}
-```
-
-- The feature base decides that a resource is absent, a conflict exists, or a business
-  rule failed. It supplies the feature-specific message, safe details, and status.
-- Route-base mixins may provide helpers for genuinely shared errors such as the
-  application's standard authentication, permission, not-found, or conflict shape.
-- A helper must delegate to the same response builder; it must not introduce a second
-  envelope or hide the status code.
-- Do not put feature names, domain lookups, or feature-specific validation in a common
-  error mixin.
-- Framework request-validation errors, raised `HTTPException`s, and unexpected
-  exceptions remain the responsibility of FastAPI or registered exception handlers.
-  Do not convert every exception into a route-mixin return value.
-- Never expose database, credential, or remote-service internals merely because the
-  envelope supports a `detail` field.
-
-When an error is part of a public endpoint contract, declare its Pydantic schema in the
-feature's `models.py` and reference it from the endpoint's OpenAPI `responses` metadata.
-
-## Collection query flow
-
-Use the shared collection flow only for endpoints whose semantics actually match it.
-The feature base still owns the root statement and all domain-specific criteria.
-
-```text
-feature root statement + visibility/eligibility criteria
-                         ↓
-feature search/filter/order hooks
-                         ↓
-count matching rows before pagination
-                         ↓
-apply offset/start and limit
-                         ↓
-execute and select entity or composite projection
-                         ↓
-shared list metadata + response envelope
-```
-
-The common layer may own:
-
-- stable query concepts such as offset/start, limit, ordering, search, and filtering;
-- offset/limit application;
-- total-count execution over the filtered, unpaginated statement;
-- parsing a project-wide filter syntax and applying safe generic scalar filters;
-- construction of list metadata and the empty-page response.
-
-The feature base owns:
-
-- the selected ORM entities, joins, eager loaders, and visibility criteria;
-- the allowed filter keys and any relation-aware or domain-specific filters;
-- explicit search expressions over real feature fields;
-- the allowed ordering map and deterministic default order;
-- the selected `data`, `data_by_list`, other entity projection, or composite builder.
-
-Preserve established metadata field names when extending an existing API. Conceptually
-distinguish the number of items returned on the current page from the total number of
-matching items. Count from the filtered statement before offset/limit unless the
-endpoint contract explicitly defines another meaning. The count must describe the same
-logical entity population as the item query; use distinct counting when joins could
-duplicate root entities.
-
-Do not copy these historical implementation details into new infrastructure:
-
-- a placeholder search against a guessed column such as `field` or `menutitle`;
-- accepting arbitrary client-provided ORM attribute names without an allowlist;
-- silently treating invalid filter values as valid filters;
-- re-querying a page by collected IDs when the selected query can safely load and
-  project the required rows directly;
-- abstract methods that force unrelated features to implement empty stubs.
-
-## Query contracts
-
-Common dependency or Pydantic contracts may expose the subset shared by the project,
-for example `start`/`offset`, `limit`, `order_by`, `search`, and `filter_by`. A
-feature-local contract specializes validation, supported ordering values, descriptions,
-and feature-only parameters.
-
-- Bound offsets and limits according to the target API's compatibility requirements.
-- Normalize optional values once at the contract boundary.
-- Keep filter syntax stable when an existing public API uses it.
-- For a new API, reject malformed filters, unknown keys, and invalid typed values with
-  the project's normalized client-error response. Preserve a documented ignore policy
-  only when compatibility with an existing API requires it.
-- Treat response format and download flags as common parameters only when the shared
-  response infrastructure implements them.
-
-## Entity projections and API contracts
-
-The layers cooperate without sharing ownership:
-
-```text
-ORM model
-    -> persistence state
-
-model_mixins/<entity>/
-    -> one entity's `data*` representations
-
-routes/<feature>/base.py
-    -> chooses a representation or builds a composite result
-
-routes/base/mixins/
-    -> wraps the result as a public HTTP response
-
-routes/<feature>/models.py
-    -> declares the public Pydantic shape
-```
-
-The selected representation, eager-load graph, response envelope, and Pydantic schema
-must describe the same payload. Update them together when a field or relation changes.
-
-Returning a ready-made Starlette/FastAPI `Response` can bypass normal
-`response_model` validation and serialization. If the shared builder returns a
-`Response`, treat Pydantic models as an explicit public contract and verify the emitted
-success, error, empty-list, and metadata payloads with endpoint tests. If the project
-returns plain Python values and lets FastAPI serialize them, preserve that established
-boundary instead of adding a custom `Response` wrapper.
-
-## Placement and migration
-
-For a new project, implement the shared routing classes under `routes/base/` and
-`routes/base/mixins/` immediately. Bootstrap keeps common Pydantic/query contracts in
-`routes/general_models.py` and the shared response utility in `routes/utils.py`.
-These modules contain only common API behavior, not a catalog of domain helpers or
-entity schemas. In an existing project, classify older locations such as a top-level
-`routes/mixins.py` before moving them. Preserve compatible public imports when a
-requested migration changes placement.
-
-Do not move working legacy infrastructure merely to make the tree look canonical.
-When a requested change includes consolidation, move one coherent capability at a
-time, preserve its public envelope, and update all consumers in the same change.
+When changing a shared method, inspect every consumer and preserve its positional and
+keyword calling conventions. A correctness fix that intentionally changes the public
+contract requires explicit scope; it is not part of ordinary Bootstrap fidelity.

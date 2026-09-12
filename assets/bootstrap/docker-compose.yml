@@ -1,0 +1,25 @@
+services:
+
+    api:
+        build:
+          context: .
+        command:
+            - /bin/sh
+            - -c
+            - |
+                echo "wait for 5 seconds"
+                sleep 5
+                uvicorn src.run:application --host 0.0.0.0 --port __PROJECT_PORT__ --reload --timeout-keep-alive 1000
+        volumes:
+            - .:/src/app
+        env_file:
+            - src/.env
+        logging:
+          options:
+            max-size: 10m
+        deploy:
+          resources:
+            reservations:
+              memory: 20M
+        ports:
+            - __PROJECT_PORT__:__PROJECT_PORT__
