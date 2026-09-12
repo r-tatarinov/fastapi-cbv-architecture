@@ -208,11 +208,14 @@ boundary instead of adding a custom `Response` wrapper.
 
 ## Placement and migration
 
-For a new project, place shared routing capabilities under `routes/base/` and reusable
-HTTP/API mixins under `routes/base/mixins/`. In an existing project, classify older
-locations such as a top-level `routes/mixins.py` or `routes/utils.py` before moving
-them. Their behavior may confirm the architecture without their physical placement
-being precedent for new code.
+For a new project, create `routes/base/` and `routes/base/mixins/` as Bootstrap package
+boundaries. Place shared routing capabilities under `routes/base/` and reusable
+HTTP/API mixins under `routes/base/mixins/` only when a concrete application-wide
+contract requires them. The boundary packages may contain only `__init__.py` before
+then; do not add placeholder response builders, error helpers, base classes, or
+registries. In an existing project, classify older locations such as a top-level
+`routes/mixins.py` or `routes/utils.py` before moving them. Their behavior may confirm
+the architecture without their physical placement being precedent for new code.
 
 Do not move working legacy infrastructure merely to make the tree look canonical.
 When a requested change includes consolidation, move one coherent capability at a

@@ -6,7 +6,8 @@ architecture convention built around FastAPI `APIRouter` feature routers registe
 with `fastapi-utils` `@cbv(...)`, feature-local behavior bases, shared routing and
 response infrastructure, thin HTTP boundaries, explicit ORM/entity-representation
 separation, representation-driven eager loading, single-owner transactions, and
-layers created only on demand.
+baseline architectural package boundaries whose concrete implementations are created
+only on demand.
 
 It is not a FastAPI framework, Python library, or mandatory way to build FastAPI
 applications.
@@ -76,8 +77,9 @@ model_mixins/
 
 ## Core principles
 
-- A feature is a cohesive API capability, and additional layers exist only when they
-  have a current distinct responsibility.
+- Bootstrap creates the baseline `routes/base/mixins/`, `models/`, and
+  `model_mixins/` package boundaries even before the first feature; concrete modules
+  and additional layers exist only when they have a current distinct responsibility.
 - `fastapi-utils` `@cbv(...)` registers each feature router over a FastAPI `APIRouter`;
   the router class inherits its feature-local base.
 - Routers own HTTP wiring and delegation, not SQL or business behavior.

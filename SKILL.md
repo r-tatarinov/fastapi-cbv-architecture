@@ -13,13 +13,16 @@ whose HTTP features use `fastapi-utils` CBV routers and feature-local behavior b
 The architecture keeps HTTP wiring thin, places feature behavior behind the router,
 shares reusable HTTP response and collection-query behavior through the routing base,
 separates persistence from entity representation, derives eager loading from the
-selected representation, and gives each atomic mutation one transaction owner. Create
-only the layers that have a current responsibility, adapting package names and paths to
-the existing project.
+selected representation, and gives each atomic mutation one transaction owner. During
+Bootstrap, create the baseline package boundaries defined in `references/core.md` even
+before they contain concrete implementations. Otherwise create only layers and modules
+that have a current responsibility, adapting package names and paths to the existing
+project.
 
 ## Select a mode
 
-- **Bootstrap** — establish a minimal runnable architecture in a new or minimal project.
+- **Bootstrap** — establish the minimal architectural skeleton in a new or minimal
+  project, not merely the fewest files needed to start FastAPI.
 - **Extend** — add a capability to an existing project without treating legacy patterns
   as automatic precedent.
 - **Audit** — perform a read-only architecture assessment.

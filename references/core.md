@@ -2,9 +2,42 @@
 
 This document is the normative architecture for this skill.
 
-## Architecture map
+## Bootstrap skeleton and architecture map
 
-A typical project may have this shape:
+For a new project using a `src` layout, Bootstrap creates this architectural skeleton
+even when no business feature exists yet:
+
+```text
+src/app/
+├── __init__.py
+├── main.py
+├── routes/
+│   ├── __init__.py
+│   └── base/
+│       ├── __init__.py
+│       └── mixins/
+│           └── __init__.py
+├── models/
+│   └── __init__.py
+└── model_mixins/
+    └── __init__.py
+```
+
+These directories are baseline architectural package boundaries, not speculative
+implementations. They establish the separation among feature routing, shared HTTP/API
+behavior, ORM mappings, and entity representations before the first feature arrives.
+Adapt the application package and source-root names when the project uses another
+layout, but preserve these sibling boundaries. `main.py` constructs the FastAPI
+application and may legitimately contain no feature-router registration.
+
+Do not place concrete modules in the baseline packages merely to make them non-empty.
+In particular, Bootstrap does not create `registration.py`, `registry.py`,
+`router_manager.py`, placeholder response or error helpers, fake base classes, or
+empty abstractions. This architecture defines shared response and error
+responsibilities, but it does not prescribe a concrete shared class or module that
+must exist before a real endpoint needs that contract.
+
+Beyond this baseline skeleton, a typical project may grow into this shape:
 
 ```text
 app/
@@ -40,11 +73,12 @@ app/
         └── ...
 ```
 
-> Create only the layers that have a current responsibility.
+> Always create the Bootstrap package boundaries above. Create concrete modules and
+> additional layers only when they have a current responsibility.
 
-This tree shows architectural form, not mandatory literal paths. Adapt top-level
-package names and placement to the existing project. Do not create empty or speculative
-layers to resemble the example.
+The expanded tree shows architectural form, not mandatory literal paths. Adapt
+top-level package names and placement to the existing project. Do not create empty or
+speculative layers beyond the explicit Bootstrap package boundaries.
 
 The runtime responsibility flow is:
 
@@ -126,6 +160,11 @@ actually needs. It remains responsible for feature queries, mutations, business
 rules, explicit search and ordering expressions, visibility criteria, and choosing an
 entity representation or composite projection. `routes/<feature>/router.py` inherits
 that feature base and remains the HTTP boundary.
+
+The `routes/base/` and `routes/base/mixins/` packages exist in the Bootstrap skeleton
+because the boundary itself is architectural. Concrete files inside them exist only
+for defined application-wide contracts or repeated behavior. Do not invent a shared
+component merely to populate either package.
 
 Read [routing-infrastructure.md](routing-infrastructure.md) for the response, error,
 list, pagination, filter, search, and contract-alignment rules.
@@ -250,8 +289,23 @@ HTTP feature
 └── eager loaders          only when a response reads relations
 ```
 
-Do not create an ORM model, repository, serializer, loader, or integration abstraction
-only to complete a template.
+Do not create an ORM model, repository, serializer, loader, integration abstraction,
+feature-specific schema, entity projection, or list/search/filter implementation only
+to complete a template. The empty `models/` and `model_mixins/` packages are the
+intentional Bootstrap exception: their sibling boundaries always exist, while
+`models/<entity>.py` and `model_mixins/<entity>/` wait for a real entity responsibility.
+
+## Application route registration
+
+Route registration is an application-composition responsibility, not a mandatory
+standalone module. With no feature routers, an empty FastAPI application is a complete
+Bootstrap state and has nothing to register.
+
+When the first feature appears, connect its `APIRouter` to the FastAPI application at
+the application's route-registration boundary. That boundary may remain in `main.py`.
+Create a separate registration module only when actual registration composition or an
+established project convention gives it a distinct responsibility. Never create
+`registration.py`, `registry.py`, or `router_manager.py` in advance as a placeholder.
 
 ## ORM and response boundary
 
