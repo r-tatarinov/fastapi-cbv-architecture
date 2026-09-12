@@ -1,6 +1,6 @@
 ---
 name: fastapi-cbv-architecture
-description: Bootstrap, extend, or audit a feature-oriented Python/FastAPI application built around fastapi-utils CBV routers, thin HTTP wiring, explicit ORM response boundaries, eager relation loading, and single-owner transactions. Use when shaping the base application architecture, adding an API feature, or reviewing an existing FastAPI structure; do not use for subsystem-specific design.
+description: Bootstrap, extend, or audit a feature-oriented Python/FastAPI application built around fastapi-utils CBV routers, shared routing and response infrastructure, thin HTTP wiring, separate ORM entity representations, eager relation loading, and single-owner transactions. Use when shaping the base application architecture, adding an API feature, or reviewing an existing FastAPI structure; do not use for subsystem-specific design.
 metadata:
   short-description: Apply feature-oriented FastAPI CBV architecture
 ---
@@ -11,10 +11,11 @@ Use this skill to bootstrap, extend, or audit a feature-oriented FastAPI applica
 whose HTTP features use `fastapi-utils` CBV routers and feature-local behavior bases.
 
 The architecture keeps HTTP wiring thin, places feature behavior behind the router,
-separates persistence from API representation, derives eager loading from the selected
-representation, and gives each atomic mutation one transaction owner. Create only the
-layers that have a current responsibility, adapting package names and paths to the
-existing project.
+shares reusable HTTP response and collection-query behavior through the routing base,
+separates persistence from entity representation, derives eager loading from the
+selected representation, and gives each atomic mutation one transaction owner. Create
+only the layers that have a current responsibility, adapting package names and paths to
+the existing project.
 
 ## Select a mode
 
@@ -29,6 +30,9 @@ requests use Audit and do not authorize edits.
 ## References
 
 - Read [references/core.md](references/core.md) for the normative architecture.
+- Read [references/routing-infrastructure.md](references/routing-infrastructure.md)
+  when the task touches shared response envelopes, errors, query parameters, list
+  flows, pagination, filtering, searching, sorting, or `routes/base` abstractions.
 - Read [references/modes.md](references/modes.md) for the selected mode's workflow.
 
 ## Out of scope

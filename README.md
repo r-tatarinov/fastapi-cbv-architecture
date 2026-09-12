@@ -3,9 +3,10 @@
 FastAPI CBV Architecture is a reusable architecture skill for AI coding agents and
 developers working with feature-oriented FastAPI applications. It documents an
 architecture convention built around FastAPI `APIRouter` feature routers registered
-with `fastapi-utils` `@cbv(...)`, feature-local behavior bases, thin HTTP boundaries,
-explicit ORM/response separation, representation-driven eager loading, single-owner
-transactions, and layers created only on demand.
+with `fastapi-utils` `@cbv(...)`, feature-local behavior bases, shared routing and
+response infrastructure, thin HTTP boundaries, explicit ORM/entity-representation
+separation, representation-driven eager loading, single-owner transactions, and
+layers created only on demand.
 
 It is not a FastAPI framework, Python library, or mandatory way to build FastAPI
 applications.
@@ -13,31 +14,34 @@ applications.
 ## Why
 
 FastAPI features can gradually mix HTTP wiring, database access, serialization,
-transactions, and integrations in the same module. This skill provides a compact set
-of boundaries for keeping those responsibilities visible without automatically adding
-service, repository, or other speculative layers.
+response envelopes, collection querying, transactions, and integrations in the same
+module. This skill provides a compact set of boundaries for keeping those
+responsibilities visible without automatically adding service, repository, or other
+speculative layers.
 
 ## Architecture
 
 ```text
 HTTP request
     ↓
-router.py
+routes/<feature>/router.py
     ↓
-base.py
+routes/<feature>/base.py
     ↓
 ORM / integration
     ↓
-result construction / response builder
+entity representation or feature projection
     ↓
-Pydantic contract
+routes/base response infrastructure
     ↓
 HTTP response
 ```
 
 This is a responsibility flow; an endpoint uses only the layers its use case needs.
 
-See [`references/core.md`](references/core.md) for the full normative architecture.
+See [`references/core.md`](references/core.md) for the full normative architecture and
+[`references/routing-infrastructure.md`](references/routing-infrastructure.md) for the
+shared response, error, and collection-query boundaries.
 
 ## Feature structure
 
@@ -47,15 +51,19 @@ routes/<feature>/
 ├── router.py
 ├── base.py
 ├── models.py
-└── response_models.py
+└── response_models.py  # optional OpenAPI responses/examples
 ```
 
-Here, feature `models.py` contains Pydantic request and parameter contracts, while
-`response_models.py` contains Pydantic response contracts. ORM mappings live
-separately under the application's ORM models package. Entity response/data mixins
-live in a sibling `model_mixins` package:
+Feature `models.py` contains Pydantic request, query, and response contracts.
+`response_models.py`, when present, contains only OpenAPI `responses` metadata and
+examples. Shared HTTP/API behavior lives separately from entity behavior:
 
 ```text
+routes/base/
+├── ...
+└── mixins/
+    └── ...             # response, error, and routing behavior
+
 models/
 ├── __init__.py
 └── <entity>.py
@@ -73,9 +81,16 @@ model_mixins/
 - `fastapi-utils` `@cbv(...)` registers each feature router over a FastAPI `APIRouter`;
   the router class inherits its feature-local base.
 - Routers own HTTP wiring and delegation, not SQL or business behavior.
+- `routes/base/` owns shared routing infrastructure; `routes/base/mixins/` owns small,
+  reusable HTTP/API behaviors such as response normalization and collection flow.
 - ORM persistence and API representation are separated; one entity's representation
-  is centralized in its response/data mixin when the entity is API-facing.
-- Composite and use-case-specific results are constructed in the feature base.
+  is centralized under `model_mixins/` when the entity is API-facing.
+- Model mixins never own HTTP behavior, and route-base mixins never become serializers
+  for a particular entity.
+- Composite and use-case-specific results, searches, filters, and ordering are owned by
+  the feature base.
+- Shared success and expected-error responses use one public envelope; feature-local
+  Pydantic models declare that contract.
 - Eager loaders are derived from the selected representation or projection.
 - Serializer-triggered lazy SQL is forbidden.
 - One atomic mutation has one transaction owner and one session across its database
@@ -121,6 +136,7 @@ fastapi-cbv-architecture/
 ├── .gitignore
 └── references/
     ├── core.md
+    ├── routing-infrastructure.md
     └── modes.md
 ```
 

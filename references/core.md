@@ -11,12 +11,17 @@ app/
 ├── main.py
 ├── routes/
 │   ├── __init__.py
+│   ├── base/
+│   │   ├── __init__.py
+│   │   ├── ...                 # shared routing infrastructure
+│   │   └── mixins/
+│   │       └── ...             # reusable HTTP/API behavior
 │   └── <feature>/
 │       ├── __init__.py
 │       ├── router.py
 │       ├── base.py
 │       ├── models.py
-│       └── response_models.py
+│       └── response_models.py  # optional OpenAPI responses/examples
 │
 ├── database/
 │   └── session.py
@@ -46,15 +51,15 @@ The runtime responsibility flow is:
 ```text
 HTTP request
     ↓
-router.py
+routes/<feature>/router.py
     ↓
-base.py
+routes/<feature>/base.py
     ↓
 ORM / integration
     ↓
-result construction / response builder
+entity representation or feature projection
     ↓
-Pydantic contract
+routes/base response infrastructure
     ↓
 HTTP response
 ```
@@ -62,20 +67,23 @@ HTTP response
 This is a responsibility model, not a requirement that every endpoint traverse every
 possible layer. A use case stops where its current responsibilities stop.
 
-`routes/<feature>/models.py` contains Pydantic request and parameter contracts;
-`routes/<feature>/response_models.py` contains Pydantic response contracts;
-`models/<entity>.py` contains ORM persistence mapping; and
-`model_mixins/<entity>/` contains that entity's response/data mixins.
+`routes/<feature>/models.py` contains the feature's Pydantic request, parameter, and
+response contracts. An optional `routes/<feature>/response_models.py` contains only
+OpenAPI `responses` metadata and examples. `models/<entity>.py` contains ORM
+persistence mapping; `model_mixins/<entity>/` contains that entity's response/data
+behavior; and `routes/base/mixins/` contains reusable HTTP/API behavior.
 
 | Question | Owner |
 |---|---|
 | Where is HTTP wiring? | Feature `router.py` |
 | Where is feature behavior? | Feature `base.py` |
+| Where is shared routing infrastructure? | `routes/base/` |
+| Where are shared response and routing behaviors? | `routes/base/mixins/` |
 | Where is persistence mapping? | `models/<entity>.py`, one mapped model per file |
-| Where is one entity represented? | Its response/data mixin under `model_mixins/<entity>/` |
+| Where is one entity represented? | Its data/representation mixin under `model_mixins/<entity>/` |
 | Where is a composite response built? | Feature `base.py` |
-| Where are public request and parameter contracts? | Feature Pydantic `models.py` |
-| Where are public response contracts? | Feature Pydantic `response_models.py` |
+| Where are public API contracts? | Feature Pydantic `models.py` |
+| Where are optional OpenAPI response examples? | Feature `response_models.py` |
 | Who completes an HTTP transaction? | The feature-base mutation |
 | What determines eager loaders? | Relations read by the selected builder or projection |
 | When is a new layer created? | Only when it has a current distinct responsibility |
@@ -93,16 +101,55 @@ routes/<feature>/
 ├── router.py
 ├── base.py
 ├── models.py
-└── response_models.py
+└── response_models.py  # optional
 ```
 
 - `router.py` owns the HTTP boundary: decorators, parameters, dependency injection,
   authentication wiring, session injection, response metadata, and delegation.
 - `base.py` owns queries, mutations, business validation, result construction, and
   reusable feature behavior.
-- `models.py` owns Pydantic request and parameter contracts.
-- `response_models.py` owns Pydantic response contracts.
+- `models.py` owns Pydantic request, parameter, and response contracts.
+- `response_models.py`, when present, owns only OpenAPI `responses` metadata and
+  examples; it does not own Pydantic API schemas.
 - `__init__.py` owns explicit public exports used to register or consume the feature.
+
+## Shared routing boundary
+
+`routes/base/` is the shared infrastructure layer between feature behavior and the
+HTTP response. It may define response-envelope construction, common error
+normalization, collection-query orchestration, common query contracts, and small
+reusable routing mixins when they implement an established application-wide contract
+or repeated cross-feature behavior.
+
+`routes/<feature>/base.py` composes only the shared capabilities that the feature
+actually needs. It remains responsible for feature queries, mutations, business
+rules, explicit search and ordering expressions, visibility criteria, and choosing an
+entity representation or composite projection. `routes/<feature>/router.py` inherits
+that feature base and remains the HTTP boundary.
+
+Read [routing-infrastructure.md](routing-infrastructure.md) for the response, error,
+list, pagination, filter, search, and contract-alignment rules.
+
+## Two mixin families
+
+Keep these sibling responsibilities separate even when historical projects use
+different physical names:
+
+```text
+model_mixins/
+    -> behavior and representations belonging to one ORM entity
+       (`data`, `data_by_list`, other entity-specific `data*` projections)
+
+routes/base/mixins/
+    -> reusable HTTP/API response and routing behavior
+       (response envelopes, error normalization, collection/query flow)
+```
+
+A model mixin must not know about HTTP status codes, pagination, query parameters, or
+download formats. A route-base mixin must not become the canonical serializer for a
+particular ORM entity. Product-, billing-, or other domain-specific behavior does not
+become shared routing infrastructure merely because several feature classes inherit
+it.
 
 ## CBV boundary
 
@@ -118,6 +165,8 @@ APIRouter
 FeatureRouter
     ↑
 FeatureBase
+    ↑
+selected routes/base capabilities
 ```
 
 The inheritance boundary remains:
@@ -127,6 +176,10 @@ FeatureBase
     ↑
 FeatureRouter
 ```
+
+The feature base may inherit or delegate to narrowly scoped abstractions from
+`routes/base/`. Do not require every feature to inherit one universal base or implement
+irrelevant abstract hooks.
 
 Structural example:
 
@@ -187,13 +240,14 @@ owns that responsibility.
 
 ```text
 HTTP feature
-├── router          required for the HTTP boundary
-├── base            required for HTTP feature behavior
-├── request/parameter models when input contracts exist
-├── response models  when output contracts exist
-├── ORM model       only when persistent mapped state exists
-├── response mixin  only for API-facing ORM entities
-└── eager loaders   only when a response reads relations
+├── router                 required for the HTTP boundary
+├── base                   required for HTTP feature behavior
+├── Pydantic models        when API contracts exist
+├── OpenAPI response file  only when separate examples/metadata improve clarity
+├── shared route behavior  only when behavior is reused across features
+├── ORM model              only when persistent mapped state exists
+├── entity mixin           only for API-facing ORM entities
+└── eager loaders          only when a response reads relations
 ```
 
 Do not create an ORM model, repository, serializer, loader, or integration abstraction
@@ -216,26 +270,28 @@ model_mixins/
 ```
 
 ```text
-ProductResponseMixin
+ProductDataMixin
         ↑
      Product
 ```
 
 ```text
-ORM model       -> persistence mapping
-Response mixin  -> representation of this ORM entity
-Pydantic model  -> public API contract
+ORM model         -> persistence mapping
+Model/entity mixin -> behavior and representations of this ORM entity
+Route-base mixin  -> reusable HTTP/API behavior
+Pydantic model    -> public API contract
 ```
 
 API serialization must not live directly in the mapped ORM model body. An internal or
-link model that is not exposed through the API does not require a response mixin. Add
-that boundary only when the entity becomes API-facing. Keep entity mixins in the
-dedicated `model_mixins/<entity>/` package, separate from ORM mappings. Export
+link model that is not exposed through the API does not require an entity
+data/representation mixin. Add that boundary only when the entity becomes API-facing.
+Keep entity mixins in the dedicated `model_mixins/<entity>/` package, separate from
+ORM mappings. Export
 externally consumed models and mixins explicitly through their package `__init__.py`.
 
-## Response construction
+## Entity and response construction
 
-Centralize representations of one ORM entity in its response/data mixin:
+Centralize representations of one ORM entity in its data/representation mixin:
 
 - `data` may be its default representation;
 - `data_by_list` may be a compact/list representation;
@@ -244,16 +300,22 @@ Centralize representations of one ORM entity in its response/data mixin:
 Do not prescribe a global builder catalog.
 
 ```text
-single ORM entity representation -> entity response mixin
+single ORM entity representation -> entity data/representation mixin
 
 multiple entities /
 computed fields /
 aggregate projection             -> feature base
+
+HTTP envelope /
+status and metadata /
+delivery representation          -> route-base response infrastructure
 ```
 
-The router must not assemble ORM-derived payloads. JSON is the default representation.
-A file or download response is an endpoint-specific delivery variant, not a reason to
-create a global response-format system.
+The feature base selects the entity builder or constructs the composite result, then
+passes that result to the shared response infrastructure. The router must not assemble
+ORM-derived payloads. JSON is the default delivery representation. Other formats or
+download behavior belong in shared routing infrastructure only when they are an
+established cross-feature API capability; do not create them speculatively.
 
 ## Relation loading
 
