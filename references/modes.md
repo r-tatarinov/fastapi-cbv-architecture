@@ -17,6 +17,28 @@ Use for a new or minimal project.
 5. Add persistence or integrations only when the use case requires them.
 6. Do not create placeholder layers, formats, or abstract hooks.
 
+### Do not invent endpoints
+
+Bootstrap must not invent product or operational endpoints to make the application
+look complete. Do not automatically add:
+
+- `/health`, `/healthz`, `/ready`, `/readiness`, `/live`, `/liveness`, `/ping`, or
+  `/status`;
+- demo or example endpoints;
+- a fake feature merely to exercise routing;
+- a placeholder router merely to have something to register.
+
+Create such endpoints only when the user explicitly requests them, they are an
+established standard in the target project, or a concrete deployment or infrastructure
+requirement needs them now. Bootstrapping a FastAPI application is not by itself a
+reason to add a health endpoint.
+
+An application with no business routes is a valid bootstrap result. Verify it by
+importing the application object, confirming `FastAPI(...)` construction, checking
+router-registration infrastructure when it exists, and running the import or startup
+checks available in the existing environment. Do not create API surface solely to test
+the architecture.
+
 ## Extend
 
 Use to expand an existing project.
