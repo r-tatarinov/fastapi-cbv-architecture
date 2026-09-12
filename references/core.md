@@ -2,42 +2,15 @@
 
 This document is the normative architecture for this skill.
 
-## Bootstrap skeleton and architecture map
+## Bootstrap and architecture map
 
-For a new project using a `src` layout, Bootstrap creates this architectural skeleton
-even when no business feature exists yet:
+Bootstrap creates the working foundation specified in [bootstrap.md](bootstrap.md):
+application setup, configuration, async ORM, task lifecycle, shared response/error
+and collection implementations, registration, protected documentation, and an example
+feature. These are established starter responsibilities even before the user adds a
+business feature. Empty package boundaries alone do not complete Bootstrap.
 
-```text
-src/app/
-├── __init__.py
-├── main.py
-├── routes/
-│   ├── __init__.py
-│   └── base/
-│       ├── __init__.py
-│       └── mixins/
-│           └── __init__.py
-├── models/
-│   └── __init__.py
-└── model_mixins/
-    └── __init__.py
-```
-
-These directories are baseline architectural package boundaries, not speculative
-implementations. They establish the separation among feature routing, shared HTTP/API
-behavior, ORM mappings, and entity representations before the first feature arrives.
-Adapt the application package and source-root names when the project uses another
-layout, but preserve these sibling boundaries. `main.py` constructs the FastAPI
-application and may legitimately contain no feature-router registration.
-
-Do not place concrete modules in the baseline packages merely to make them non-empty.
-In particular, Bootstrap does not create `registration.py`, `registry.py`,
-`router_manager.py`, placeholder response or error helpers, fake base classes, or
-empty abstractions. This architecture defines shared response and error
-responsibilities, but it does not prescribe a concrete shared class or module that
-must exist before a real endpoint needs that contract.
-
-Beyond this baseline skeleton, a typical project may grow into this shape:
+The following map illustrates responsibilities, not the complete starter inventory:
 
 ```text
 app/
@@ -56,8 +29,8 @@ app/
 │       ├── models.py
 │       └── response_models.py  # optional OpenAPI responses/examples
 │
-├── database/
-│   └── session.py
+├── orm_sender/
+│   └── manager_sqlalchemy.py
 │
 ├── integrations/
 │   └── <system>/
@@ -73,12 +46,9 @@ app/
         └── ...
 ```
 
-> Always create the Bootstrap package boundaries above. Create concrete modules and
-> additional layers only when they have a current responsibility.
-
-The expanded tree shows architectural form, not mandatory literal paths. Adapt
-top-level package names and placement to the existing project. Do not create empty or
-speculative layers beyond the explicit Bootstrap package boundaries.
+Use the complete tree and concrete contracts in `bootstrap.md` for new projects.
+Adapt names and placement to an existing project's established layout in Extend;
+the starter inventory is not a mandate to retrofit unrelated infrastructure.
 
 The runtime responsibility flow is:
 
@@ -161,10 +131,9 @@ rules, explicit search and ordering expressions, visibility criteria, and choosi
 entity representation or composite projection. `routes/<feature>/router.py` inherits
 that feature base and remains the HTTP boundary.
 
-The `routes/base/` and `routes/base/mixins/` packages exist in the Bootstrap skeleton
-because the boundary itself is architectural. Concrete files inside them exist only
-for defined application-wide contracts or repeated behavior. Do not invent a shared
-component merely to populate either package.
+Bootstrap establishes concrete application-wide contracts in `routes/base/` and
+`routes/base/mixins/`, including `AbstractBaseRouter`, `GeneralBaseRouter`, and
+`MainRouterMIXIN`. Further shared components require a defined common responsibility.
 
 Read [routing-infrastructure.md](routing-infrastructure.md) for the response, error,
 list, pagination, filter, search, and contract-alignment rules.
@@ -283,29 +252,25 @@ HTTP feature
 ├── base                   required for HTTP feature behavior
 ├── Pydantic models        when API contracts exist
 ├── OpenAPI response file  only when separate examples/metadata improve clarity
-├── shared route behavior  only when behavior is reused across features
+├── shared route behavior  starter contracts, then confirmed common capabilities
 ├── ORM model              only when persistent mapped state exists
 ├── entity mixin           only for API-facing ORM entities
 └── eager loaders          only when a response reads relations
 ```
 
-Do not create an ORM model, repository, serializer, loader, integration abstraction,
-feature-specific schema, entity projection, or list/search/filter implementation only
-to complete a template. The empty `models/` and `model_mixins/` packages are the
-intentional Bootstrap exception: their sibling boundaries always exist, while
-`models/<entity>.py` and `model_mixins/<entity>/` wait for a real entity responsibility.
+The Bootstrap baseline includes reusable infrastructure and the `records` example
+with its ORM model, representation mixin, and API schemas. Beyond that baseline,
+additional entities, projections, loaders, integrations, and layers require a current
+responsibility. Do not generate a speculative business-domain catalog.
 
 ## Application route registration
 
-Route registration is an application-composition responsibility, not a mandatory
-standalone module. With no feature routers, an empty FastAPI application is a complete
-Bootstrap state and has nothing to register.
-
-When the first feature appears, connect its `APIRouter` to the FastAPI application at
-the application's route-registration boundary. That boundary may remain in `main.py`.
-Create a separate registration module only when actual registration composition or an
-established project convention gives it a distinct responsibility. Never create
-`registration.py`, `registry.py`, or `router_manager.py` in advance as a placeholder.
+Route registration is an application-composition responsibility. Bootstrap implements
+it with ordinary `APIRouter` composition in `routes/includes_routes/`, exported through
+`routes`, and connected by `create_app()`. The example feature activates this boundary
+immediately. No custom discovery framework or router manager is needed. In Extend,
+preserve the existing composition boundary, including registration in `main.py` when
+that is the project's convention.
 
 ## ORM and response boundary
 
@@ -367,9 +332,9 @@ delivery representation          -> route-base response infrastructure
 
 The feature base selects the entity builder or constructs the composite result, then
 passes that result to the shared response infrastructure. The router must not assemble
-ORM-derived payloads. JSON is the default delivery representation. Other formats or
-download behavior belong in shared routing infrastructure only when they are an
-established cross-feature API capability; do not create them speculatively.
+ORM-derived payloads. Bootstrap establishes JSON and JSON downloads as shared delivery
+capabilities. Other formats require a target-project contract; the starter does not
+include YAML/XML.
 
 ## Relation loading
 

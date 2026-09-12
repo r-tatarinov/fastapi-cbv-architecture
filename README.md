@@ -1,13 +1,13 @@
 # FastAPI CBV Architecture
 
-FastAPI CBV Architecture is a reusable architecture skill for AI coding agents and
-developers working with feature-oriented FastAPI applications. It documents an
+`fastapi-cbv-architecture` is a standalone reusable architecture skill for AI coding
+agents and developers working with feature-oriented FastAPI applications. It documents an
 architecture convention built around FastAPI `APIRouter` feature routers registered
 with `fastapi-utils` `@cbv(...)`, feature-local behavior bases, shared routing and
 response infrastructure, thin HTTP boundaries, explicit ORM/entity-representation
 separation, representation-driven eager loading, single-owner transactions, and
-baseline architectural package boundaries whose concrete implementations are created
-only on demand.
+a ready-to-develop Bootstrap with concrete shared implementations, async ORM,
+application setup, JSON downloads, protected documentation, and an example feature.
 
 It is not a FastAPI framework, Python library, or mandatory way to build FastAPI
 applications.
@@ -77,9 +77,11 @@ model_mixins/
 
 ## Core principles
 
-- Bootstrap creates the baseline `routes/base/mixins/`, `models/`, and
-  `model_mixins/` package boundaries even before the first feature; concrete modules
-  and additional layers exist only when they have a current distinct responsibility.
+- Bootstrap creates working `app_setup`, `config`, `orm_sender`, task lifecycle,
+  `MainRouterMIXIN`, `GeneralBaseRouter`, common query/response contracts, and a small
+  `records` CBV feature with separate ORM and entity-representation packages.
+- The starter includes JSON responses/downloads, Basic-Auth-protected documentation,
+  PostgreSQL, Alembic, environment examples, and Docker startup. YAML/XML are excluded.
 - `fastapi-utils` `@cbv(...)` registers each feature router over a FastAPI `APIRouter`;
   the router class inherits its feature-local base.
 - Routers own HTTP wiring and delegation, not SQL or business behavior.
@@ -101,13 +103,19 @@ model_mixins/
 ## Operating modes
 
 ```text
-Bootstrap -> establish the architecture
+Bootstrap -> generate a runnable foundation ready for feature development
 Extend    -> add a capability to an existing application
 Audit     -> review an existing architecture without modifying it
 ```
 
 See [`references/modes.md`](references/modes.md) for Bootstrap, Extend, and Audit
 workflows.
+
+For the complete starter structure, public contracts, and acceptance checks, see
+[`references/bootstrap.md`](references/bootstrap.md). The skill provides detailed
+generation instructions that define the reusable architecture and its Bootstrap
+baseline. Applying these rules requires no access to external reference projects,
+templates, or repositories. Extend preserves the target project's existing setup.
 
 ## Installation
 
@@ -138,6 +146,7 @@ fastapi-cbv-architecture/
 ├── .gitignore
 └── references/
     ├── core.md
+    ├── bootstrap.md
     ├── routing-infrastructure.md
     └── modes.md
 ```

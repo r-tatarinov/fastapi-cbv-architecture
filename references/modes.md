@@ -8,84 +8,33 @@ shared responses, errors, query parameters, or list behavior, also apply
 
 Use for a new or minimal project.
 
-1. Determine the package layout, application entrypoint, and existing infrastructure.
-2. Create the baseline architectural package boundaries from `core.md`, not merely
-   the minimum files required to import or start FastAPI.
-3. Construct the FastAPI application in `main.py`; it may have no routes.
-4. If there is a real first feature, apply the feature structure from `core.md` and
-   register its `APIRouter` at the application composition boundary.
-5. Add a shared response, error, or collection-query implementation only when a
-   concrete feature needs it as an application-wide contract. The
-   `routes/base/mixins/` package boundary exists before those implementations.
-6. Add persistence or integrations only when the use case requires them.
-7. Do not create placeholder layers, formats, modules, or abstract hooks.
+1. Read [bootstrap.md](bootstrap.md) in full, together with the shared routing rules.
+2. Inspect the target layout and preserve explicit user choices or existing setup.
+3. Implement the starter's application setup, configuration, ORM/session boundary,
+   task lifecycle, shared routing contracts, JSON responses/downloads, and docs auth.
+4. Implement and register the `records` example with its model, entity mixin,
+   feature base, thin CBV router, schemas, and migration.
+5. Supply environment examples, dependencies, Docker/PostgreSQL startup, migrations,
+   and concise commands for running the project and adding its next feature.
+6. Run the acceptance checks in `bootstrap.md`; report any environment-limited checks.
 
-### Architectural boundaries versus implementations
+### What counts as complete
 
-Create every package in the normative Bootstrap tree in `core.md`. Those boundaries
-are mandatory for a new architecture Bootstrap and may exist before the first
-business feature or entity. This is the deliberate exception to the rule against
-speculative layers: the packages encode the architecture, while concrete contents
-remain on demand.
+The shared implementations are part of the starter contract, not optional future
+work. A tree of `__init__.py` files or an importable FastAPI object alone is incomplete.
+The generated project must let the developer start the application and add a feature
+using the existing response, query, ORM, and setup abstractions.
 
-Do not create the following until a concrete responsibility requires them:
+The standard API surface consists of the small example and protected documentation.
+Do not add other demo domains, health endpoints, identity providers, or integrations
+unless requested or required by the target deployment. The `records` example may be
+replaced by a user-requested first feature that demonstrates the same boundaries.
+An explicit request to omit examples overrides the default but does not remove the
+working shared infrastructure.
 
-- `routes/<feature>/` or feature-specific Pydantic schemas;
-- `models/<entity>.py`, ORM entities, or persistence infrastructure;
-- `model_mixins/<entity>/` or entity projections;
-- `database/` or `integrations/`;
-- shared response/error implementations or list, search, filter, pagination, and
-  ordering implementations inside `routes/base/`;
-- separate route-registration modules or managers.
-
-`routes/base/` is always present as the shared routing boundary, and
-`routes/base/mixins/` is always present as its reusable HTTP/API behavior boundary.
-This skill defines their responsibilities but no mandatory concrete implementation
-names for an application with no endpoints. Therefore, a boundary containing only
-`__init__.py` is the correct empty-project state. Do not populate it with
-`registration.py`, `registry.py`, `router_manager.py`, placeholder response builders,
-placeholder error helpers, fake base classes, or empty abstractions.
-
-### Router registration
-
-Do not create a registration abstraction when there are no feature routers. A
-route-registration boundary becomes active with the first real feature:
-
-```text
-feature APIRouter
-    ↓
-application route registration
-    ↓
-FastAPI app
-```
-
-Registration may stay directly in `main.py`. Extract a separate module only when
-registration composition has a real distinct responsibility or the target project
-already requires that convention. A future need to register routers does not justify
-a placeholder `registration.py` during an empty Bootstrap.
-
-### Do not invent endpoints
-
-Bootstrap must not invent product or operational endpoints to make the application
-look complete. Do not automatically add:
-
-- `/health`, `/healthz`, `/ready`, `/readiness`, `/live`, `/liveness`, `/ping`, or
-  `/status`;
-- demo or example endpoints;
-- a fake feature merely to exercise routing;
-- a placeholder router merely to have something to register.
-
-Create such endpoints only when the user explicitly requests them, they are an
-established standard in the target project, or a concrete deployment or infrastructure
-requirement needs them now. Bootstrapping a FastAPI application is not by itself a
-reason to add a health endpoint.
-
-An application with no business routes is a valid Bootstrap result. Verify it by
-checking the complete baseline package tree, importing the application object,
-confirming `FastAPI(...)` construction, and running the import or startup checks
-available in the existing environment. Check router registration only when feature
-routers actually exist. Do not create API surface or registration infrastructure
-solely to test the architecture.
+Keep the skill instruction-based. Do not require access to external reference
+projects, templates, or repositories in order to apply this skill. Do not introduce
+a bundled project template or generator merely to implement these instructions.
 
 ## Extend
 
@@ -101,6 +50,10 @@ Use to expand an existing project.
 5. Apply the invariants from `core.md` to new code.
 6. Do not refactor unrelated legacy code.
 7. If the existing architecture differs but works, do not replace it silently.
+
+The Bootstrap inventory is not a retrofit checklist. Do not add its example,
+documentation authentication, Docker setup, or other unrelated infrastructure to an
+existing project as part of Extend.
 
 ## Audit
 

@@ -14,15 +14,16 @@ The architecture keeps HTTP wiring thin, places feature behavior behind the rout
 shares reusable HTTP response and collection-query behavior through the routing base,
 separates persistence from entity representation, derives eager loading from the
 selected representation, and gives each atomic mutation one transaction owner. During
-Bootstrap, create the baseline package boundaries defined in `references/core.md` even
-before they contain concrete implementations. Otherwise create only layers and modules
-that have a current responsibility, adapting package names and paths to the existing
-project.
+Bootstrap, build the ready-to-develop application defined in `references/bootstrap.md`,
+including working shared infrastructure and a small example feature. Outside that
+baseline, create layers and modules with a current responsibility, adapting package
+names and paths to the existing project.
 
 ## Select a mode
 
-- **Bootstrap** — establish the minimal architectural skeleton in a new or minimal
-  project, not merely the fewest files needed to start FastAPI.
+- **Bootstrap** — establish a runnable project with application setup, async ORM,
+  shared routing abstractions, JSON responses/downloads, protected documentation,
+  task lifecycle, migrations, Docker, and an example CBV feature.
 - **Extend** — add a capability to an existing project without treating legacy patterns
   as automatic precedent.
 - **Audit** — perform a read-only architecture assessment.
@@ -37,6 +38,9 @@ requests use Audit and do not authorize edits.
   when the task touches shared response envelopes, errors, query parameters, list
   flows, pagination, filtering, searching, sorting, or `routes/base` abstractions.
 - Read [references/modes.md](references/modes.md) for the selected mode's workflow.
+- In Bootstrap, also read [references/bootstrap.md](references/bootstrap.md) in full
+  for the required implementations and acceptance checks. These are instructions for
+  generating a project, not a bundled code template or a dependency on a source repo.
 
 ## Out of scope
 

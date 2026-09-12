@@ -38,8 +38,9 @@ collection query capability ──┘
 ```
 
 A feature should inherit or delegate to only the capabilities it uses. Exact class and
-method names follow the target project; names such as `ResponseMixin` or
-`CollectionQueryMixin` describe responsibilities, not a required API.
+method names follow the target project in Extend. Bootstrap uses the concrete
+`MainRouterMIXIN`, `AbstractBaseRouter`, and `GeneralBaseRouter` contracts specified
+in [bootstrap.md](bootstrap.md); response-only features need no collection base.
 
 ## Successful responses
 
@@ -73,9 +74,9 @@ serialization, or the choice between an entity projection and a composite projec
 Keep one normalization path instead of constructing slightly different envelopes in
 routers and feature bases.
 
-JSON is the baseline. XML, YAML, downloads, or similar formats are optional transport
-capabilities: preserve them when they are part of the target API, but do not add them
-to a project merely because an earlier implementation supported them.
+Bootstrap implements JSON responses and JSON downloads through the same envelope
+builder. It has no YAML/XML support or `response_fmt` parameter. In Extend, preserve
+other transport capabilities when they belong to the target API's existing contract.
 
 ## Error responses
 
@@ -208,14 +209,13 @@ boundary instead of adding a custom `Response` wrapper.
 
 ## Placement and migration
 
-For a new project, create `routes/base/` and `routes/base/mixins/` as Bootstrap package
-boundaries. Place shared routing capabilities under `routes/base/` and reusable
-HTTP/API mixins under `routes/base/mixins/` only when a concrete application-wide
-contract requires them. The boundary packages may contain only `__init__.py` before
-then; do not add placeholder response builders, error helpers, base classes, or
-registries. In an existing project, classify older locations such as a top-level
-`routes/mixins.py` or `routes/utils.py` before moving them. Their behavior may confirm
-the architecture without their physical placement being precedent for new code.
+For a new project, implement the shared routing classes under `routes/base/` and
+`routes/base/mixins/` immediately. Bootstrap keeps common Pydantic/query contracts in
+`routes/general_models.py` and the shared response utility in `routes/utils.py`.
+These modules contain only common API behavior, not a catalog of domain helpers or
+entity schemas. In an existing project, classify older locations such as a top-level
+`routes/mixins.py` before moving them. Preserve compatible public imports when a
+requested migration changes placement.
 
 Do not move working legacy infrastructure merely to make the tree look canonical.
 When a requested change includes consolidation, move one coherent capability at a
